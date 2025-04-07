@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+    {{> header }}
+
+    <!-- ✅ Browser-native alert -->
+    {{#if alert}}
+        <script>
+            alert("{{alert}}");
+        </script>
+    {{/if}}
+
+    <!-- User email & logout -->
+    <a href="/logout" class="user-info" id="logout-link">{{userEmail}}</a>
+
+    <div class="gallery-container">
+
+        <!-- ✅ Dropdown Selection (fixed version) -->
+        <form action="/image" method="POST" class="selection-section">
+            <select name="image" class="dropdown-style">
+                <option disabled selected value></option> <!-- EMPTY placeholder -->
+                {{#each images}}
+                    {{#unless (eq this "Gallery.jpg")}}
+                        <option value="{{this}}" {{#if (eq this ../selectedImage)}}selected{{/if}}>
+                            {{removeExtension this}}
+                        </option>
+                    {{/unless}}
+                {{/each}}
+            </select>
+            <button type="submit" class="submit-btn">Submit</button>
+        </form>
+
+        <!-- Selected Image Display -->
+        <div class="image-box">
+            {{#if (eq selectedImage "Gallery.jpg")}}
+                <img src="/images/{{selectedImage}}" alt="Default Image">
+            {{else}}
+                <a href="/order/{{selectedImage}}">
+                    <img src="/images/{{selectedImage}}" alt="Selected Image">
+                </a>
+            {{/if}}
+            <div class="image-name">{{removeExtension selectedImage}}</div>
+        </div>
+
+    </div>
+
+    <!-- Logout Hover -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const logoutLink = document.getElementById("logout-link");
+            const originalText = logoutLink.innerText;
+
+            logoutLink.style.transition = "all 0.3s ease-in-out";
+            logoutLink.addEventListener("mouseenter", () => logoutLink.innerText = "Logout");
+            logoutLink.addEventListener("mouseleave", () => logoutLink.innerText = originalText);
+        });
+    </script>
+
+</body>
+</html>

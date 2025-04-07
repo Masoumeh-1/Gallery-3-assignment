@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+    {{> header }}
+
+    <div class="purchase-box">
+        <img src="/images/{{selectedImage}}" alt="Selected Image">
+        <div class="image-name">{{removeExtension selectedImage}}</div>
+        <div class="image-description">{{description}}</div>
+        <div class="image-price">CAD {{price}}</div>
+
+        <!-- Buy/Cancel buttons -->
+        <div class="purchase-buttons">
+            <!--  Buy button with JS alert -->
+            <form method="POST" action="/order/buy" onsubmit="return confirmPurchase();">
+                <input type="hidden" name="image" value="{{selectedImage}}">
+                <button type="submit">Buy</button>
+            </form>
+
+            <!-- Cancel button with JS alert -->
+            <button onclick="cancelAndReturn('{{selectedImage}}')">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        function confirmPurchase() {
+            alert("SOLD!!!");         //  Alert only once
+            return true;              //  Then submit the form
+        }
+
+        function cancelAndReturn(filename) {
+            alert("Maybe next time."); //  Cancel alert
+            window.location.href = `/gallery`;
+        }
+    </script>
+
+</body>
+</html>
