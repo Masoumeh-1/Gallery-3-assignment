@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const exphbs = require('express-handlebars');
 const path = require('path');
@@ -7,38 +6,35 @@ const clientSessions = require('client-sessions');
 const mongoose = require('mongoose');
 const orderRoutes = require('../order');
 const Gallery = require('../models/Gallery');
+const serverless = require('serverless-http'); // ✅ Important for Vercel compatibility
+
+require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
 
 // MongoDB connection
-mongoose.connect(process.env.MONGO_URL).then(() => console.log("Connected to MongoDB"))
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => console.log("Connected to MongoDB"))
   .catch(err => console.error("MongoDB connection error:", err));
 
-// Handlebars setup (with json helper)
+// Handlebars setup
 const hbs = exphbs.create({
   extname: '.hbs',
   defaultLayout: false,
   helpers: {
-    removeExtension: function (filename) {
-      return filename?.replace('.jpg', '');
-    },
-    eq: function (a, b) {
-      return a === b;
-    },
-    json: function (context) {
-      return JSON.stringify(context); // Allows raw JS alert text
-    }
+    removeExtension: filename => filename?.replace('.jpg', ''),
+    eq: (a, b) => a === b,
+    json: context => JSON.stringify(context)
   },
-  partialsDir: path.join(__dirname, 'views', 'partials')
+  partialsDir: path.join(__dirname, '../views', 'partials')
 });
 app.engine('hbs', hbs.engine);
 app.set('view engine', 'hbs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, '../views'));
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 app.use(clientSessions({
   cookieName: "session",
   secret: "someSecret123",
@@ -47,14 +43,13 @@ app.use(clientSessions({
 }));
 
 // Load users
-const users = JSON.parse(fs.readFileSync(path.join(__dirname, "user.json"), "utf-8"));
+const users = JSON.parse(fs.readFileSync(path.join(__dirname, "../user.json"), "utf-8"));
 
-// Login page
+// Routes
 app.get('/', (req, res) => {
   res.render('login', { name: "Masoumeh Hosseinnazhad" });
 });
 
-// Login handler
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -66,14 +61,11 @@ app.post('/login', async (req, res) => {
   }
 
   req.session.user = { name: "Masoumeh Hosseinnazhad", email: username };
-
-  // Reset all STATUS to A on login
   await Gallery.updateMany({}, { $set: { STATUS: "A" } });
 
   res.redirect('/gallery');
 });
 
-// Gallery route
 app.get('/gallery', async (req, res) => {
   if (!req.session.user) return res.redirect('/');
 
@@ -103,7 +95,6 @@ app.get('/gallery', async (req, res) => {
   });
 });
 
-// Handle dropdown image selection
 app.post('/image', async (req, res) => {
   if (!req.session.user) return res.redirect('/');
 
@@ -124,20 +115,13 @@ app.post('/image', async (req, res) => {
   });
 });
 
-// Logout
 app.get('/logout', (req, res) => {
   req.session.reset();
   res.redirect('/');
 });
 
-// Mount /order routes
+// Mount /order
 app.use('/order', orderRoutes);
 
-// Export app for Vercel, or listen locally
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`✅ Server running at http://localhost:${PORT}`);
-  });
-} else {
-  module.exports = app;
-}
+// ✅ EXPORT the app wrapped with serverless-http
+module.exports = serverless(app);
