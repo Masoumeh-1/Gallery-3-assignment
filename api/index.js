@@ -1,3 +1,4 @@
+const serverless = require('serverless-http');
 const express = require('express');
 const exphbs = require('express-handlebars');
 const path = require('path');
@@ -6,35 +7,36 @@ const clientSessions = require('client-sessions');
 const mongoose = require('mongoose');
 const orderRoutes = require('../order');
 const Gallery = require('../models/Gallery');
-const serverless = require('serverless-http'); // ✅ Important for Vercel compatibility
-
 require('dotenv').config();
 
 const app = express();
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URL)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.error("MongoDB connection error:", err));
+let isConnected = false;
 
-// Handlebars setup
+async function connectToDatabase() {
+  if (isConnected) return;
+  await mongoose.connect(process.env.MONGO_URL);
+  isConnected = true;
+}
+
+// Setup Handlebars
 const hbs = exphbs.create({
   extname: '.hbs',
   defaultLayout: false,
   helpers: {
     removeExtension: filename => filename?.replace('.jpg', ''),
     eq: (a, b) => a === b,
-    json: context => JSON.stringify(context)
+    json: context => JSON.stringify(context),
   },
-  partialsDir: path.join(__dirname, '../views', 'partials')
+  partialsDir: path.join(__dirname, '..', 'views', 'partials')
 });
 app.engine('hbs', hbs.engine);
 app.set('view engine', 'hbs');
-app.set('views', path.join(__dirname, '../views'));
+app.set('views', path.join(__dirname, '..', 'views'));
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(clientSessions({
   cookieName: "session",
   secret: "someSecret123",
@@ -43,14 +45,16 @@ app.use(clientSessions({
 }));
 
 // Load users
-const users = JSON.parse(fs.readFileSync(path.join(__dirname, "../user.json"), "utf-8"));
+const users = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "user.json"), "utf-8"));
 
 // Routes
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  await connectToDatabase();
   res.render('login', { name: "Masoumeh Hosseinnazhad" });
 });
 
 app.post('/login', async (req, res) => {
+  await connectToDatabase();
   const { username, password } = req.body;
 
   if (!users[username]) {
@@ -67,16 +71,13 @@ app.post('/login', async (req, res) => {
 });
 
 app.get('/gallery', async (req, res) => {
+  await connectToDatabase();
   if (!req.session.user) return res.redirect('/');
 
   const availableImages = await Gallery.find({ STATUS: "A" });
   const imageList = availableImages.map(img => img.FILENAME);
 
-  const selectedImage =
-    req.session.imageAfterCancel ||
-    req.session.imageAfterBuy ||
-    'Gallery.jpg';
-
+  const selectedImage = req.session.imageAfterCancel || req.session.imageAfterBuy || 'Gallery.jpg';
   const selectedDoc = await Gallery.findOne({ FILENAME: selectedImage });
 
   const alert = req.session.alert || null;
@@ -96,12 +97,12 @@ app.get('/gallery', async (req, res) => {
 });
 
 app.post('/image', async (req, res) => {
+  await connectToDatabase();
   if (!req.session.user) return res.redirect('/');
 
   const selectedImage = req.body.image;
   const availableImages = await Gallery.find({ STATUS: "A" });
   const imageList = availableImages.map(img => img.FILENAME);
-
   const selectedDoc = await Gallery.findOne({ FILENAME: selectedImage });
 
   res.render('index', {
@@ -120,8 +121,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Mount /order
 app.use('/order', orderRoutes);
 
-// ✅ EXPORT the app wrapped with serverless-http
 module.exports = serverless(app);
