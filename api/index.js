@@ -5,8 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const clientSessions = require('client-sessions');
 const mongoose = require('mongoose');
-const orderRoutes = require('./order');
-const Gallery = require('./models/Gallery');
+const orderRoutes = require('../order');
+const Gallery = require('../models/Gallery');
 
 const app = express();
 const PORT = 3000;
